@@ -1,0 +1,44 @@
+---
+- name : install postgresql
+  hosts: test
+  user : s-semanticbits
+  sudo_user : root
+  connection : ssh
+  gather_facts: true
+
+  tasks:
+  - name: ensure apt cache is up to date
+    apt:
+      update_cache: yes
+      cache_valid_time : 86400
+  - name: ensure packages are installed
+    action : apt pkg= state = installed
+    with_items:
+        - postgresql
+        - libpq-dev
+        - python-psycopg2
+
+- name : db config
+  hosts: test
+  user : s-semanticbits
+  connection : ssh
+  sudo_user : root
+  gather_facts: true
+
+  vars:
+    dbname: myapp
+    dbuser: sandeep
+    dbpassword: password
+
+  tasks:
+  - name: ensure database is created
+    postgresql_db: name={{dbname}}
+
+  - name: ensure user has access to database
+    postgresql_user: db={{dbname}} name={{dbuser}} password={{dbpassword}} priv=ALL
+
+  - name: ensure user does not have unnecessary privilege
+    postgresql_user: name={{dbuser}} role_attr_flags=NOSUPERUSER,NOCREATEDB
+
+  - name: ensure no other user can access the database
+    postgresql_privs: db={{dbname}} role=PUBLIC type=database priv=ALL state=absent
